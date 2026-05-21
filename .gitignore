@@ -1,0 +1,56 @@
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Generated output files
+x
+my-output
+*.log
+*.tmp
+
+# Ignore generated .out files
+*.out
+
+# Keep sample output
+!outputs/
+outputs/*
+!outputs/sample-output.out
+
+# Executables / binaries
+tester
+jbod_server
+jbod_server_binary
+libcrypto.so.10
+
+# Other files
+Makefile
+tester.c
+tester.h
+util.c
+util.h
+jbod.o
+
+# Trace generator scripts
+make_linear_trace.py
+make_random_trace.py
+make_simple_trace.py
+
+# Debug files
+core
+core.*
+*.dSYM/
+
+# Editor/OS files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Custom traces
+!traces/
+!traces/*
