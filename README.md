@@ -30,6 +30,9 @@ Each JBOD block stores 256 bytes. Reads and writes may begin in the middle of a 
 │   ├── cache.c                 Cache implementation
 │   ├── mdadm.c                 Multiple device administration implementation
 │   └── net.c                   Network implementation
+├── tests/
+│   ├── tcp_benchmark.c         TCP performance test
+│   └── tcp_smoke_test.c        Basic TCP functions test
 ├── traces/
 │   ├── linear-long-input       Linear input trace
 │   ├── random-long-input       Random input trace
@@ -107,3 +110,37 @@ Starts with a sequential initialization pass to initialize storage in block orde
 
 *Note: the traces are different lengths, so hit rates are more meaningful than raw hit counts.*
 
+## TCP Testing
+
+The TCP path was tested with a basic smoke test and a sequential workload benchmark over localhost. The smoke test verified that the client could connect to the JBOD server, mount the JBOD system over TCP, unmount it, and disconnect cleanly.
+
+```text
+TCP smoke test
+PASS: connected to 127.0.0.1:3333, rc=1
+PASS: mount over TCP
+PASS: unmount over TCP
+PASS: disconnected
+```
+
+The benchmark was run against the JBOD server on `127.0.0.1:3333` with a cache size of 4096 entries. Each workload executed 10000 operations through the TCP client path.
+
+| Workload | Request Size | Ops | Time | Throughput | Ops/sec |
+|---|---:|---:|---:|---:|---:|
+| Sequential write | 256 B | 10000 | 11.844 s | 0.216 MB/s | 844.284 |
+| Sequential read | 256 B | 10000 | 0.206 s | 12.407 MB/s | 48465.762 |
+| Sequential write | 16 B | 10000 | 7.475 s | 0.021 MB/s | 1337.788 |
+| Sequential read | 16 B | 10000 | 0.041 s | 3.888 MB/s | 243028.503 |
+| Sequential write | 1024 B | 10000 | 32.684 s | 0.313 MB/s | 305.964 |
+| Sequential read | 1024 B | 10000 | 0.870 s | 11.769 MB/s | 11492.951 |
+
+| Cache Metric | Result |
+|---|---:|
+| Cache hits | 115905 |
+| Cache queries | 120000 |
+| Hit rate | 96.6% |
+
+The 16-byte workloads measure small request overhead, the 256-byte workloads match the JBOD block size, and the 1024-byte workloads test requests that span multiple blocks.
+
+These results show that the TCP path handles repeated storage operations successfully across small, block sized, and multi block requests. Write workloads are slower because each write must update data through the remote JBOD server. Larger writes improve total MB/s compared with 16-byte writes, but reduce operations per second because each request touches more JBOD blocks.
+
+Read workloads are much faster because the cache absorbs most repeated block accesses after earlier operations populate it. The 96.6% hit rate means the read results primarily measure cached read performance through the mdadm layer, not uncached network round trip cost. For that reason, write throughput is the better indicator of TCP update cost, while read throughput shows the benefit of the local block cache.
